@@ -6,6 +6,7 @@
 #include <ios>
 #include <iostream>
 #include <string>
+#include <thread>
 
 #include "../lib/nlohmann/json.hpp"
 #include "../runner/engine.h"
@@ -18,6 +19,8 @@ using json = nlohmann::json;
 struct Settings {
   bool center = false;
 };
+
+Engine engine;
 
 map<char, string> colorMapAnsi = {{'J', "\033["},     {'S', "\033[102m"},
                                   {'Z', "\033[101m"}, {'O', "\033[43m"},
@@ -194,19 +197,43 @@ void renderEngine(Engine *engine, bool centerBoard) {
     addch('\n');
   }
 
-	
   addch('\n');
+
+  string statsText = "B2B: " + to_string(max(engine->stats.b2b, 0)) +
+                     ", Combo: " + to_string(max(engine->stats.combo, 0));
+	int statsTextMargin = max((COLS - (int)statsText.length()) / 2, 0);
+	printw("%*s", statsTextMargin, "");
+	printw(statsText.c_str());
+	addch('\n');
+
   printw("(Esc to exit)\n");
 }
 
+vector<string> logs;
+
+// void handle_ctrlz(int sig) {
+// 	logs.push_back(to_string(engine.checkpoints.size()));
+//   engine.revert();
+// 	// engine.hardDrop();
+//   logs.push_back("undo");
+// }
+
 int main() {
   // block keyboardinterupt
+  // Create a new process group
+  setpgid(0, 0);
+
+  // Ignore the SIGTSTP signal (this is what's sent when you press Ctrl+Z)
+  signal(SIGINT, SIG_IGN);
+
+	// seed random (For random results)
+  srand(time(NULL));
 
   json engineConfigJson = json::parse(
       R"({"board":{"width":10,"height":20,"buffer":20},"garbage":{"cap":{"absolute":1000,"increase":0,"max":1000,"value":8},"speed":20},"kickTable":"SRS+","options":{"b2bChaining":true,"comboTable":"multiplier","garbageBlocking":"combo blocking","garbageMultiplier":{"increase":0,"marginTime":0,"value":1},"garbageTargetBonus":"none","spinBonuses":"t-spins","garbageAttackCap":10000},"queue":{"minLength":20,"seed":0,"type":"7-bag"}})");
 
   engineConfigJson["queue"]["seed"] =
-      floor(2147483646 * (rand() / (RAND_MAX + 1.0)) + 1);
+      floor(rand());
 
   auto engine = Engine(
       engineConfigJson.template get<EngineConfig::EngineInitializeParams>());
@@ -258,15 +285,19 @@ int main() {
       engine.rotate180();
     else if (key == "soft")
       engine.softDrop();
-    else if (key == "hard")
+    else if (key == "hard") {
       engine.hardDrop();
-    else if (key == "hold")
+      engine.checkpoint();
+    } else if (key == "hold")
       engine.hold();
-    else if (key == "quit")
+    else if (key == "undo") {
+      engine.revert();
+      logs.push_back("undo");
+    } else if (key == "quit")
       scr = "menu";
     else if (key == "reset") {
       engineConfigJson["queue"]["seed"] =
-          floor(2147483646 * (rand() / (RAND_MAX + 1.0)) + 1);
+          floor(rand());
 
       engine =
           Engine(engineConfigJson
@@ -274,38 +305,47 @@ int main() {
     }
   };
 
+  // signal(SIGTSTP, handle_ctrlz);
+
   Settings settings;
   settings.center = true;
   vector<string> menuOptions = {"Play", "Settings", "Quit"};
   int menuIndex = 0;
-  while (running) {
-    clear();
-    if (scr == "game") {
-      renderEngine(&engine, settings.center);
-    } else if (scr == "menu") {
-      printw("Welcome to Termtris!\n");
-      for (int i = 0; i < menuOptions.size(); i++) {
-        if (i == menuIndex) {
-          printw(" > ");
-        } else {
-          printw("   ");
-        }
-        printw(menuOptions[i].c_str());
-        printw("\n");
-      }
-    } else if (scr == "settings") {
-      printw("Settings\n");
-      // printw("Center board: ");
-      // if (settings.center) {
-      // 	printw("On\n");
-      // } else {
-      // 	printw("Off\n");
-      // }
-      printw("Coming soon...\n");
-      printw("Press 'esc' to go back\n");
-    }
-    refresh();
 
+  thread renderThread(
+      [&engine, &running, &settings, &scr, &menuOptions, &menuIndex]() {
+        while (running) {
+          clear();
+          if (scr == "game") {
+            renderEngine(&engine, settings.center);
+          } else if (scr == "menu") {
+            printw("Welcome to Termtris!\n");
+            for (int i = 0; i < menuOptions.size(); i++) {
+              if (i == menuIndex) {
+                printw(" > ");
+              } else {
+                printw("   ");
+              }
+              printw(menuOptions[i].c_str());
+              printw("\n");
+            }
+          } else if (scr == "settings") {
+            printw("Settings\n");
+            // printw("Center board: ");
+            // if (settings.center) {
+            // 	printw("On\n");
+            // } else {
+            // 	printw("Off\n");
+            // }
+            printw("Coming soon...\n");
+            printw("Press 'esc' to go back\n");
+          }
+          refresh();
+          this_thread::sleep_for(chrono::milliseconds(1000 / 60));
+        }
+      });
+
+  while (running) {
     auto c = getch();
 
     auto key = getKey(c);
@@ -341,8 +381,12 @@ int main() {
   clear();
   refresh();
   endwin();
+	renderThread.detach();
 
-  cout << "Thanks for playing!" << endl;
+  std::cout << "Thanks for playing!" << endl;
+  for (auto l : logs) {
+    std::cout << l << endl;
+  }
 
   return 0;
 }

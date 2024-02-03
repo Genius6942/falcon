@@ -12,7 +12,6 @@ using namespace std;
 bool legal(const Blocks &blocks, const BoardState &board) {
   if (board.empty()) return false;
   for (const auto &block : blocks) {
-		cout << "check " << block.first << " " << block.second << endl;
     if (block.first < 0 || block.first >= board[0].size() || block.second < 0 ||
         board[block.second][block.first] != 'X')
       return false;

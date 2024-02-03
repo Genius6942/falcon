@@ -165,8 +165,6 @@ HardDropRes Engine::hardDrop() {
 
   std::vector<std::tuple<char, int, int>> blocks;
 
-	cout << this->falling.location.second << endl;
-
   auto b = this->falling.getAbsoluteBlocks();
   for (auto block : b) {
     blocks.push_back(
