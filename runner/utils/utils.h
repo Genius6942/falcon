@@ -7,3 +7,6 @@
 #include "../../lib/nlohmann/json.hpp"
 
 void logInfo(string message);
+extern vector<string> flushableLog;
+void flushLog();
+void appendLog(string l);

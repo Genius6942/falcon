@@ -39,5 +39,4 @@ class RNG {
 };
 
 typedef function<vector<char>()> RngInnerFunction;
-typedef function<function<vector<char>()>(int seed)>
-    RngFunction;
+typedef function<function<vector<char>()>(int seed)> RngFunction;

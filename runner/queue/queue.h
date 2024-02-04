@@ -25,10 +25,10 @@ class Queue {
   vector<char> value;
   int index;
 
-  void reset(int index = 0);
+  void reset(int idx = 0);
   void onRepopulate(void (*listener)(vector<char> pieces));
   char next();
-  char at(int index);
+  char at(int idx);
   char shift();
   vector<string> as_string();
 

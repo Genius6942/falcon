@@ -1,7 +1,8 @@
 #include "engine.h"
 
-#include "search/search.h"
 #include <iostream>
+
+#include "search/search.h"
 
 using namespace std;
 
@@ -39,9 +40,11 @@ void Engine::revert() {
   EngineCheckpoint checkpoint = this->checkpoints.back();
   this->checkpoints.pop_back();
   this->garbageQueue.queue = checkpoint.garbage;
-  this->queue.index = checkpoint.queue;
+  this->queue.reset(checkpoint.queue);
   this->board.state = checkpoint.board;
   this->held = checkpoint.hold;
+	this->stats.b2b = checkpoint.b2b;
+	this->stats.combo = checkpoint.combo;
   this->initiatePiece(checkpoint.falling);
 }
 
@@ -54,6 +57,8 @@ void Engine::save() {
   checkpoint.board = this->board.state;
   checkpoint.falling = this->falling.symbol;
   checkpoint.hold = this->held;
+	checkpoint.b2b = this->stats.b2b;
+	checkpoint.combo = this->stats.combo;
   this->checkpoints.push_back(checkpoint);
 }
 
@@ -83,8 +88,8 @@ void Engine::initiatePiece(char piece) {
 
 bool Engine::isTSpinKick(KickRes kick) {
   if (!kick.success || kick.id == "" || kick.index == -1) return false;
-  return (kick.id == "03" && kick.index == 3) ||
-         (kick.id == "21" && kick.index == 3);
+  return ((kick.id == "03" || kick.id == "01") && kick.index == 3) ||
+         ((kick.id == "21" || kick.id == "23") && kick.index == 3);
 }
 
 string Engine::detectSpin(bool finOrTst) {
@@ -101,15 +106,14 @@ string Engine::detectTSpin(bool finOrTst) {
   if (finOrTst) return "normal";
   vector<bool> corners = this->getTCorners();
 
-  // if # of corners that are true < 3 return "none"
   int numCorners = 0;
-  for (int i = 0; i < corners.size(); i++) {
-    if (corners[i]) numCorners++;
-  }
+  for (auto corner : corners)
+    if (corner) numCorners++;
+
   if (numCorners < 3) return "none";
 
   if (corners[this->falling.getRotation()] &&
-      corners[this->falling.getRotation() + 1]) {
+      corners[(this->falling.getRotation() + 1) % 4]) {
     return "normal";
   }
 
@@ -121,9 +125,9 @@ vector<bool> Engine::getTCorners() {
   int y = this->falling.location.second - 1;
 
   auto getLocation = [this](int x, int y) {
-    if (x < 0 || x >= this->board.width || y < 0 || y >= this->board.height)
-      return false;
-    return this->board.state[y][x] == 'X';
+    if (x < 0 || x >= this->board.width || y < 0 || y >= this->board.fullHeight())
+      return true;
+    return this->board.state[y][x] != 'X';
   };
 
   return {getLocation(x - 1, y + 1), getLocation(x + 1, y + 1),
@@ -131,7 +135,7 @@ vector<bool> Engine::getTCorners() {
 }
 
 void Engine::rotateCW() {
-  LastSpin lastSpin;
+  Spin lastSpin;
   lastSpin.piece = this->falling.symbol;
   lastSpin.type = this->detectSpin(this->isTSpinKick(
       this->falling.rotateCW(this->board.state, this->kickTableName)));
@@ -139,7 +143,7 @@ void Engine::rotateCW() {
 }
 
 void Engine::rotateCCW() {
-  LastSpin lastSpin;
+  Spin lastSpin;
   lastSpin.piece = this->falling.symbol;
   lastSpin.type = this->detectSpin(this->isTSpinKick(
       this->falling.rotateCCW(this->board.state, this->kickTableName)));
@@ -147,7 +151,7 @@ void Engine::rotateCCW() {
 }
 
 void Engine::rotate180() {
-  LastSpin lastSpin;
+  Spin lastSpin;
   lastSpin.piece = this->falling.symbol;
   lastSpin.type = this->detectSpin(this->isTSpinKick(
       this->falling.rotate180(this->board.state, this->kickTableName)));

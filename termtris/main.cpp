@@ -10,6 +10,7 @@
 
 #include "../lib/nlohmann/json.hpp"
 #include "../runner/engine.h"
+#include "../runner/utils/utils.h"
 #include "controls.h"
 #include "previews.h"
 
@@ -201,22 +202,15 @@ void renderEngine(Engine *engine, bool centerBoard) {
 
   string statsText = "B2B: " + to_string(max(engine->stats.b2b, 0)) +
                      ", Combo: " + to_string(max(engine->stats.combo, 0));
-	int statsTextMargin = max((COLS - (int)statsText.length()) / 2, 0);
-	printw("%*s", statsTextMargin, "");
-	printw(statsText.c_str());
-	addch('\n');
+  int statsTextMargin = max((COLS - (int)statsText.length()) / 2, 0);
+  printw("%*s", statsTextMargin, "");
+  printw(statsText.c_str());
+  addch('\n');
 
   printw("(Esc to exit)\n");
 }
 
 vector<string> logs;
-
-// void handle_ctrlz(int sig) {
-// 	logs.push_back(to_string(engine.checkpoints.size()));
-//   engine.revert();
-// 	// engine.hardDrop();
-//   logs.push_back("undo");
-// }
 
 int main() {
   // block keyboardinterupt
@@ -226,14 +220,13 @@ int main() {
   // Ignore the SIGTSTP signal (this is what's sent when you press Ctrl+Z)
   signal(SIGINT, SIG_IGN);
 
-	// seed random (For random results)
+  // seed random (For random results)
   srand(time(NULL));
 
   json engineConfigJson = json::parse(
       R"({"board":{"width":10,"height":20,"buffer":20},"garbage":{"cap":{"absolute":1000,"increase":0,"max":1000,"value":8},"speed":20},"kickTable":"SRS+","options":{"b2bChaining":true,"comboTable":"multiplier","garbageBlocking":"combo blocking","garbageMultiplier":{"increase":0,"marginTime":0,"value":1},"garbageTargetBonus":"none","spinBonuses":"t-spins","garbageAttackCap":10000},"queue":{"minLength":20,"seed":0,"type":"7-bag"}})");
 
-  engineConfigJson["queue"]["seed"] =
-      floor(rand());
+  engineConfigJson["queue"]["seed"] = floor(rand());
 
   auto engine = Engine(
       engineConfigJson.template get<EngineConfig::EngineInitializeParams>());
@@ -286,18 +279,16 @@ int main() {
     else if (key == "soft")
       engine.softDrop();
     else if (key == "hard") {
-      engine.hardDrop();
       engine.checkpoint();
+      engine.hardDrop();
     } else if (key == "hold")
       engine.hold();
     else if (key == "undo") {
       engine.revert();
-      logs.push_back("undo");
     } else if (key == "quit")
       scr = "menu";
     else if (key == "reset") {
-      engineConfigJson["queue"]["seed"] =
-          floor(rand());
+      engineConfigJson["queue"]["seed"] = floor(rand());
 
       engine =
           Engine(engineConfigJson
@@ -381,12 +372,10 @@ int main() {
   clear();
   refresh();
   endwin();
-	renderThread.detach();
+  renderThread.detach();
 
   std::cout << "Thanks for playing!" << endl;
-  for (auto l : logs) {
-    std::cout << l << endl;
-  }
+  flushLog();
 
   return 0;
 }

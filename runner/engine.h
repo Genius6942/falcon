@@ -30,7 +30,7 @@ struct GameOptions {
   string garbageBlocking;
 };
 
-struct LastSpin {
+struct Spin {
   char piece;
   string type;
 };
@@ -163,6 +163,8 @@ struct EngineCheckpoint {
   int queue;
   vector<vector<char>> board;
   char falling;
+	int b2b;
+	int combo;
   optional<char> hold;
 };
 
@@ -187,7 +189,7 @@ class Engine {
   string kickTableName;
   Board board;
 
-  LastSpin lastSpin;
+  Spin lastSpin;
   Stats stats;
 
   GameOptions gameOptions;
