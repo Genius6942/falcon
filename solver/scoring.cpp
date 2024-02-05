@@ -35,20 +35,8 @@ int getBoardHeight(Engine *engine) {
 int c = 0;
 double scoreEngine(ScoringConfig &config, ScoringData &data, Engine *engine) {
   double holes = (double)countHoles(engine) / engine->board.width /
-                 engine->board.height * 10;
+                 engine->board.height * 30;
 
-  c++;
-  if (c < 3) {
-    for (int y = engine->board.state.size() - 1; y >= 0; y--) {
-      auto row = engine->board.state[y];
-      string s = "";
-      for (auto c : row) {
-        s += (c == 'X') ? ' ' : c;
-      }
-      logInfo(s);
-    }
-    logInfo("-----------------");
-  }
 
   int b2bgains = engine->stats.b2b > 0 ? 1 : 0;
 

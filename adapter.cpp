@@ -68,6 +68,41 @@ void start_adapter(EngineInitializeParams config) {
                        {"nodes", res.nodes},
                        {"threads", thread::hardware_concurrency()}}}}
              << endl;
+        auto pressKey = [&engine](string key) {
+          if (key == "left") {
+            engine.moveLeft();
+          } else if (key == "right") {
+            engine.moveRight();
+          } else if (key == "ccw") {
+            engine.rotateCCW();
+          } else if (key == "cw") {
+            engine.rotateCW();
+          } else if (key == "180") {
+            engine.rotate180();
+          } else if (key == "soft") {
+            engine.softDrop();
+          }
+        };
+        for (auto keys : res.future) {
+          for (auto key : keys) {
+            pressKey(key);
+          }
+          engine.hardDrop();
+        }
+
+        logInfo("---------");
+        for (int i = engine.board.fullHeight() - 1; i >= 0; i--) {
+          // if empty line, skip
+          if (all_of(engine.board.state[i].begin(), engine.board.state[i].end(),
+                     [](char c) { return c == 'X'; })) {
+            continue;
+          }
+          string line = "";
+          for (int j = 0; j < engine.board.width; j++) {
+            line += engine.board.state[i][j] == 'X' ? " " : "X";
+          }
+          logInfo(line);
+        }
       }
     } else {
       cout << json{{"type", "error"}, {"message", "Invalid type"}} << endl;

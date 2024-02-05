@@ -72,7 +72,6 @@ SolveState dfsRecursiveSolve(Engine *engine, int depth, ScoringData scoring,
 
     auto solve = dfsRecursiveSolve(engine, depth - 1, data, scoringConfig);
 		if (depth == 5) {
-			logInfo("ballingbals");
 		}
     solve.keys.insert(solve.keys.begin(), move.keys);
     if (solve.score > result.score) {
